@@ -1,12 +1,12 @@
 {
-  "name": "rest-client",
-  "displayName": "REST Client",
+  "name": "rest-client-internal",
+  "displayName": "REST Client Internal",
   "description": "REST Client for Visual Studio Code",
-  "version": "0.25.1",
-  "publisher": "humao",
+  "version": "0.25.3",
+  "publisher": "RESTClientPro",
   "author": {
-    "name": "Huachao Mao",
-    "email": "huachaomao@gmail.com"
+    "name": "Gary Zhu",
+    "email": "garyzjq@outlook.com"
   },
   "icon": "images/rest_icon.png",
   "galleryBanner": {
@@ -16,7 +16,7 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Huachao/vscode-restclient/issues",
-    "email": "huachaomao@gmail.com"
+    "email": "garyzjq@outlook.com"
   },
   "homepage": "https://github.com/Huachao/vscode-restclient/blob/master/README.md",
   "repository": {
@@ -707,7 +707,7 @@
     "jsonpath-plus": "^0.20.1",
     "mime-types": "^2.1.14",
     "pretty-data": "^0.40.0",
-    "tough-cookie": "^4.1.3",
+    "tough-cookie": "^3.0.1",
     "tough-cookie-file-store-bugfix": "Huachao/tough-cookie-file-store-bugfix",
     "uuid": "^3.3.2",
     "xmldom": "^0.5.0",

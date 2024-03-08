@@ -1,7 +1,7 @@
 import * as fs from 'fs-extra';
 import * as iconv from 'iconv-lite';
 import * as path from 'path';
-import { Cookie, CookieJar, Store } from 'tough-cookie';
+import { Cookie, CookieJar } from 'tough-cookie';
 import * as url from 'url';
 import { Uri, window } from 'vscode';
 import { RequestHeaders, ResponseHeaders } from '../models/base';
@@ -19,7 +19,7 @@ import { getCurrentHttpFileName, getWorkspaceRootPath } from './workspaceUtility
 import got = require('got');
 
 const encodeUrl = require('encodeurl');
-const cookieStore = require('tough-cookie-file-store-bugfix');
+//const cookieStore = require('tough-cookie-file-store-bugfix');
 
 type SetCookieCallback = (err: Error | null, cookie: Cookie) => void;
 type SetCookieCallbackWithoutOptions = (err: Error, cookie: Cookie) => void;
@@ -32,11 +32,11 @@ type Certificate = {
 };
 
 export class HttpClient {
-    private cookieStore: Store;
+    //private cookieStore: Store;
 
     public constructor() {
-        const cookieFilePath = UserDataManager.cookieFilePath;
-        this.cookieStore = new cookieStore(cookieFilePath) as Store;
+        //const cookieFilePath = UserDataManager.cookieFilePath;
+        //this.cookieStore = new cookieStore(cookieFilePath) as Store;
     }
 
     public async send(httpRequest: HttpRequest, settings?: IRestClientSettings): Promise<HttpResponse> {
@@ -107,7 +107,7 @@ export class HttpClient {
 
     public async clearCookies() {
         await fs.remove(UserDataManager.cookieFilePath);
-        this.cookieStore = new cookieStore(UserDataManager.cookieFilePath) as Store;
+        //this.cookieStore = new cookieStore(UserDataManager.cookieFilePath) as Store;
     }
 
     private async prepareOptions(httpRequest: HttpRequest, settings: IRestClientSettings): Promise<got.GotBodyOptions<null>> {
@@ -133,7 +133,7 @@ export class HttpClient {
             followRedirect: settings.followRedirect,
             rejectUnauthorized: false,
             throwHttpErrors: false,
-            cookieJar: settings.rememberCookiesForSubsequentRequests ? new CookieJar(this.cookieStore, { rejectPublicSuffixes: false }) : undefined,
+            // cookieJar: settings.rememberCookiesForSubsequentRequests ? new CookieJar(this.cookieStore, { rejectPublicSuffixes: false }) : undefined,
             retry: 0,
             hooks: {
                 afterResponse: [],
@@ -251,18 +251,39 @@ export class HttpClient {
     }
 
     private getRequestCertificate(requestUrl: string, settings: IRestClientSettings): Certificate | null {
-        const host = url.parse(requestUrl).host;
-        if (!host || !(host in settings.hostCertificates)) {
+        const parsedUrl = url.parse(requestUrl);
+        const host = parsedUrl.host;
+    
+        if (!host) {
             return null;
         }
-
-        const { cert: certPath, key: keyPath, pfx: pfxPath, passphrase } = settings.hostCertificates[host];
+    
+        // First, try to get the certificate for an exact match.
+        if (host in settings.hostCertificates) {
+            return this.getCertificateForHost(host, settings.hostCertificates[host]);
+        }
+    
+        // If no exact match is found, try to match a wildcard pattern.
+        const hostParts = host.split('.');
+        for (let i = 0; i < hostParts.length - 1; i++) {
+            const wildcardHost = '*.' + hostParts.slice(i + 1).join('.');
+            if (wildcardHost in settings.hostCertificates) {
+                return this.getCertificateForHost(wildcardHost, settings.hostCertificates[wildcardHost]);
+            }
+        }
+    
+        // No matching certificate found.
+        return null;
+    }
+    
+    private getCertificateForHost(host: string, certificateSettings: any): Certificate {
+        const { cert: certPath, key: keyPath, pfx: pfxPath, passphrase } = certificateSettings;
         const cert = this.resolveCertificate(certPath);
         const key = this.resolveCertificate(keyPath);
         const pfx = this.resolveCertificate(pfxPath);
         return { cert, key, pfx, passphrase };
     }
-
+    
     private static ignoreProxy(requestUrl: string, excludeHostsForProxy: string[]): Boolean {
         if (!excludeHostsForProxy || excludeHostsForProxy.length === 0) {
             return false;
