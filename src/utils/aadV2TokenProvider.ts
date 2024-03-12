@@ -3,6 +3,9 @@ import * as Constants from '../common/constants';
 import { HttpRequest } from '../models/httpRequest';
 import { HttpClient } from './httpClient';
 import { EnvironmentVariableProvider } from './httpVariableProviders/environmentVariableProvider';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+const execAsync = promisify(exec);
 
 /*
  AppId provisioned to allow users to explicitly consent to permissions that this app can call
@@ -10,7 +13,7 @@ import { EnvironmentVariableProvider } from './httpVariableProviders/environment
 const AadV2TokenProviderClientId = "07f0a107-95c1-41ad-8f13-912eab68b93f";
 
 export class AadV2TokenProvider {
-    private cloudConstantToCloudNameMap : { [cloudName: string]: { constantName: string } } = {
+    private cloudConstantToCloudNameMap: { [cloudName: string]: { constantName: string } } = {
         // default cloud must be first
         AzureCloud: { constantName: "public" },
         AzureChinaCloud: { constantName: "cn" },
@@ -30,6 +33,10 @@ export class AadV2TokenProvider {
 
         const authParams = await AuthParameters.parseName(name);
 
+        if (authParams.useAzCli) {
+            return await this.acquireTokenWithAzCli(authParams.scopes[0]);
+        }
+
         if (!authParams.forceNewToken) {
             const tokenEntry = AadV2TokenCache.getToken(authParams.getCacheKey());
             if (tokenEntry?.supportScopes(authParams.scopes)) {
@@ -46,6 +53,21 @@ export class AadV2TokenProvider {
         if (isDone) {
             return await this.getToken(deviceCodeResponse, authParams);
         } else {
+            return "";
+        }
+    }
+
+    public async acquireTokenWithAzCli(resource: string): Promise<string> {
+        try {
+            const { stdout, stderr } = await execAsync(`az account get-access-token --resource ${resource}`);
+            if (stderr) {
+                console.error(`Error fetching access token: ${stderr}`);
+                return "";
+            }
+            const response = JSON.parse(stdout);
+            return response.accessToken;
+        } catch (error) {
+            console.error(`Failed to execute az command: ${error}`);
             return "";
         }
     }
@@ -163,7 +185,7 @@ export class AadV2TokenProvider {
 */
 class AuthParameters {
 
-    private readonly aadV2TokenRegex: RegExp = new RegExp(`\\s*\\${Constants.AzureActiveDirectoryV2TokenVariableName}(\\s+(${Constants.AzureActiveDirectoryForceNewOption}))?(\\s+(AzureCloud|AzureChinaCloud|AzureUSGovernment|ppe))?(\\s+(appOnly))?(\\s+scopes:(\\S+))?(\\s+tenantId:([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?(\\s+clientId:([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?\\s*`);
+    private readonly aadV2TokenRegex: RegExp = new RegExp(`\\s*\\${Constants.AzureActiveDirectoryV2TokenVariableName}(\\s+(${Constants.AzureActiveDirectoryForceNewOption}))?(\\s+(AzureCloud|AzureChinaCloud|AzureUSGovernment|ppe))?(\\s+(appOnly))?(\\s+useAzCli)?(\\s+scopes:(\\S+))?(\\s+tenantId:([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?(\\s+clientId:([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?\\s*`);
     public cloud: string;
     public tenantId: string;
     public clientId: string;
@@ -172,6 +194,7 @@ class AuthParameters {
     public clientSecret?: string;
     public appOnly: boolean;
     public appUri?: string;
+    public useAzCli: boolean = false;
 
     public constructor() {
         this.cloud = "AzureCloud";
@@ -198,7 +221,6 @@ class AuthParameters {
     }
 
     static async parseName(name: string): Promise<AuthParameters> {
-
         const authParameters = new AuthParameters();
 
         // Update defaults based on environment
@@ -213,9 +235,10 @@ class AuthParameters {
             authParameters.forceNewToken = groups[2] === Constants.AzureActiveDirectoryForceNewOption;
             authParameters.cloud = groups[4] || authParameters.cloud;
             authParameters.appOnly = groups[6] === "appOnly";
-            scopes = groups[8] || scopes;
-            authParameters.tenantId = groups[10] || authParameters.tenantId;
-            explicitClientId = groups[12];
+            authParameters.useAzCli = groups[7] === " useAzCli"; // Notice the leading space in the comparison string
+            scopes = groups[9] || scopes;
+            authParameters.tenantId = groups[11] || authParameters.tenantId;
+            explicitClientId = groups[13];
         } else {
             throw new Error("Failed to parse parameters: " + name);
         }
@@ -240,6 +263,7 @@ class AuthParameters {
         }
         return authParameters;
     }
+
 }
 
 class AadV2TokenCache {

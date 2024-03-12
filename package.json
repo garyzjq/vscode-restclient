@@ -2,7 +2,7 @@
   "name": "rest-client-internal",
   "displayName": "REST Client Internal",
   "description": "REST Client for Visual Studio Code",
-  "version": "0.25.3",
+  "version": "0.25.5",
   "publisher": "RESTClientPro",
   "author": {
     "name": "Gary Zhu",
