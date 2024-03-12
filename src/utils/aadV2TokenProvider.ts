@@ -33,15 +33,15 @@ export class AadV2TokenProvider {
 
         const authParams = await AuthParameters.parseName(name);
 
-        if (authParams.useAzCli) {
-            return await this.acquireTokenWithAzCli(authParams.scopes[0]);
-        }
-
         if (!authParams.forceNewToken) {
             const tokenEntry = AadV2TokenCache.getToken(authParams.getCacheKey());
             if (tokenEntry?.supportScopes(authParams.scopes)) {
                 return tokenEntry.token;
             }
+        }
+
+        if (authParams.useAzCli) {
+            return await this.acquireTokenWithAzCli(authParams.scopes[0], authParams);
         }
 
         if (authParams.appOnly) {
@@ -57,7 +57,7 @@ export class AadV2TokenProvider {
         }
     }
 
-    public async acquireTokenWithAzCli(resource: string): Promise<string> {
+    public async acquireTokenWithAzCli(resource: string, authParams: AuthParameters): Promise<string> {
         try {
             const { stdout, stderr } = await execAsync(`az account get-access-token --resource ${resource}`);
             if (stderr) {
@@ -65,13 +65,21 @@ export class AadV2TokenProvider {
                 return "";
             }
             const response = JSON.parse(stdout);
+    
+            // Parse the expiresOn field to get the expiration time
+            const expiresOn = new Date(response.expiresOn);
+            const currentTime = new Date();
+            const expiresIn = (expiresOn.getTime() - currentTime.getTime()) / 1000; // Convert milliseconds to seconds
+    
+            AadV2TokenCache.setToken(authParams.getCacheKey(), authParams.scopes, response.accessToken, expiresIn);
+    
             return response.accessToken;
         } catch (error) {
             console.error(`Failed to execute az command: ${error}`);
             return "";
         }
     }
-
+    
     private async getDeviceCodeResponse(authParams: AuthParameters): Promise<IDeviceCodeResponse> {
         const request = this.createUserCodeRequest(authParams.clientId, authParams.tenantId, authParams.scopes, authParams.cloud);
         const response = await this._httpClient.send(request);
@@ -217,7 +225,7 @@ class AuthParameters {
     }
 
     getCacheKey(): string {
-        return this.cloud + "|" + this.tenantId + "|" + this.clientId + "|" + this.appOnly + "|" + this.scopes.join(',') as string;
+        return this.cloud + "|" + this.tenantId + "|" + this.clientId + "|" + this.appOnly + "|" + this.useAzCli + "|" + this.scopes.join(',') as string;
     }
 
     static async parseName(name: string): Promise<AuthParameters> {
