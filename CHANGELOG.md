@@ -1,7 +1,22 @@
 ## 0.25.5 (2024/03/12)
 * __Improvement__: Support AzCli to fetch AAD Token for current user and used in memory.
-    Bearer {{$aadV2Token AzureCloud useAzCli scopes:73c2949e-da2d-457a-9607-fcc665198967}}
+```
+Bearer {{$aadV2Token AzureCloud useAzCli scopes:73c2949e-da2d-457a-9607-fcc665198967}}
+```
+
 * __Improvement__: Support Wildcard SSL Cert matching.
+```
+"rest-client.certificates": {
+    "*.catalog.clouddatahub-int.net": {
+      "cert": ".\\.conf\\test\\client.crt",
+      "key": ".\\.conf\\test\\client.key"
+    },
+    "*.catalog-private.clouddatahub-int.net": {
+      "cert": ".\\.conf\\test\\client.crt",
+      "key": ".\\.conf\\test\\client.key"
+    } 
+  }
+```
 
 ## 0.25.1 (2022/07/06)
 * __Bug Fix__: [Fix request parse error for curl request without body](https://github.com/Huachao/vscode-restclient/issues/1026)
