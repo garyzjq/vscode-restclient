@@ -144,7 +144,19 @@ export class HttpElementFactory {
             null,
             Constants.AzureActiveDirectoryV2TokenDescription,
             new SnippetString(`{{$\${name:${Constants.AzureActiveDirectoryV2TokenVariableName.slice(1)}}}}`)));
-
+        originalElements.push(new HttpElement(
+            Constants.AzureActiveDirectoryV2TokenSPVariableName,
+            ElementType.SystemVariable,
+            null,
+            Constants.AzureActiveDirectoryV2TokenSPDescription,
+            new SnippetString(`{{$\${name:${Constants.AzureActiveDirectoryV2TokenSPVariableName.slice(1)}} appId:\${1:Azure Key Vault App ID URL} key:\${2:Azure Key Vault Key URL} scope:\${3:Resource URL}}}`)));
+        originalElements.push(new HttpElement(
+            Constants.AkvSecretVariableName,
+            ElementType.SystemVariable,
+            null,
+            Constants.AkvSecretDescription,
+            new SnippetString(`{{$\${name:${Constants.AkvSecretVariableName.slice(1)}} \${1:Azure Key Vault Secret URL}}}`)));
+            
         // add environment custom variables
         const environmentVariables = await EnvironmentVariableProvider.Instance.getAll();
         for (const { name, value } of environmentVariables) {

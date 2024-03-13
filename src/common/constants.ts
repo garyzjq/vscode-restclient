@@ -23,6 +23,10 @@ export const AzureActiveDirectoryVariableName = "$aadToken";
 export const AzureActiveDirectoryDescription = "Prompts to sign in to Azure AD and adds the token to the request";
 export const AzureActiveDirectoryV2TokenVariableName = "$aadV2Token";
 export const AzureActiveDirectoryV2TokenDescription = "Prompts to sign in to Azure AD V2 and adds the token to the request";
+export const AkvSecretVariableName = "$akvSecret";
+export const AkvSecretDescription = "Fetches a secret from Azure Key Vault and adds it to the request";
+export const AzureActiveDirectoryV2TokenSPVariableName = "$addV2TokenSP";
+export const AzureActiveDirectoryV2TokenSPDescription = "Prompts to sign in to Azure AD V2 with Service Principal and adds the token to the request";
 
 /**
  * NOTE: The client id represents an AAD app people sign in to. The client id is sent to AAD to indicate what app

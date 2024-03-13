@@ -5,6 +5,7 @@ import { HttpClient } from './httpClient';
 import { EnvironmentVariableProvider } from './httpVariableProviders/environmentVariableProvider';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { AadV2TokenCache } from './aadV2TokenCache';
 const execAsync = promisify(exec);
 
 /*
@@ -120,7 +121,7 @@ export class AadV2TokenProvider {
         return tokenResponse.access_token;
     }
 
-    private async getConfidentialClientToken(authParams: AuthParameters): Promise<string> {
+    public async getConfidentialClientToken(authParams: AuthParameters): Promise<string> {
         const request = this.createAcquireConfidentialClientTokenRequest(authParams.clientId, authParams.tenantId, authParams.clientSecret!, authParams.appUri!, authParams.cloud!);
         const response = await this._httpClient.send(request);
 
@@ -191,7 +192,7 @@ export class AadV2TokenProvider {
   TenantId: If not specified, we use common. If specified in environment, we use that. Value in $aadToken overrides
   Scopes are always in $aadV2Token for delegated access. They are not used for appOnly.
 */
-class AuthParameters {
+export class AuthParameters {
 
     private readonly aadV2TokenRegex: RegExp = new RegExp(`\\s*\\${Constants.AzureActiveDirectoryV2TokenVariableName}(\\s+(${Constants.AzureActiveDirectoryForceNewOption}))?(\\s+(AzureCloud|AzureChinaCloud|AzureUSGovernment|ppe))?(\\s+(appOnly))?(\\s+useAzCli)?(\\s+scopes:(\\S+))?(\\s+tenantId:([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?(\\s+clientId:([^\\.]+\\.[^\\}\\s]+|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}))?\\s*`);
     public cloud: string;
@@ -270,34 +271,6 @@ class AuthParameters {
             authParameters.clientId = explicitClientId || authParameters.clientId;
         }
         return authParameters;
-    }
-
-}
-
-class AadV2TokenCache {
-
-    private static tokens: Map<string, AadV2TokenCacheEntry> = new Map<string, AadV2TokenCacheEntry>();
-
-    public static setToken(cacheKey: string, scopes: string[], token: string, expires_in: number) {
-        const entry: AadV2TokenCacheEntry = new AadV2TokenCacheEntry();
-        entry.token = token;
-        entry.scopes = scopes;
-        this.tokens.set(cacheKey, entry);
-        setTimeout(() => {
-            this.tokens.delete(cacheKey);
-        }, expires_in * 1000);
-    }
-
-    public static getToken(cacheKey: string): AadV2TokenCacheEntry | undefined {
-        return this.tokens.get(cacheKey);
-    }
-}
-
-class AadV2TokenCacheEntry {
-    public token: string;
-    public scopes: string[];
-    public supportScopes(scopes: string[]): boolean {
-        return scopes.every((scope) => this.scopes.includes(scope));
     }
 }
 

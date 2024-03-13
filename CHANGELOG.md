@@ -1,3 +1,9 @@
+## 0.25.8 (2024/03/13)
+* __Improvement__: Support fetch SP AAD token by AppId/Key in AKV.
+```
+Bearer {{$addV2TokenSP appId:https://your-key-vault.vault.azure.net/secrets/your-app-id-secret key:https://your-key-vault.vault.azure.net/secrets/your-key-secret tenantId:your-tenant-id scope:https://your-resource/}}
+```
+
 ## 0.25.7 (2024/03/13)
 * __Improvement__: Support fetch secret from AKV in memory, can be used to fetch SP token on-demand.
 ```

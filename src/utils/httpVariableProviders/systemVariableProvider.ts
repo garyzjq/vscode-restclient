@@ -15,6 +15,7 @@ import { HttpClient } from '../httpClient';
 import { EnvironmentVariableProvider } from './environmentVariableProvider';
 import { HttpVariable, HttpVariableContext, HttpVariableProvider } from './httpVariableProvider';
 import { AkvTokenProvider } from '../akvTokenProvider';
+import { AadV2TokenSPProvider } from '../aadV2TokenSPProvider';
 
 const uuidv4 = require('uuid/v4');
 
@@ -61,6 +62,7 @@ export class SystemVariableProvider implements HttpVariableProvider {
         this.registerDotenvVariable();
         this.registerAadTokenVariable();
         this.registerAadV2TokenVariable();
+        this.registerAadV2TokenSPVariable();
         this.registerAkvTokenVariable();
     }
 
@@ -303,6 +305,15 @@ export class SystemVariableProvider implements HttpVariableProvider {
         });
     }
 
+    private registerAadV2TokenSPVariable() {
+        this.resolveFuncs.set(Constants.AzureActiveDirectoryV2TokenSPVariableName,
+            async (name) => {
+                const aadV2TokenSPProvider = new AadV2TokenSPProvider();
+                const token = await aadV2TokenSPProvider.acquireTokenSP(name);
+                return { value: token };
+            });
+    }
+    
     private async resolveSettingsEnvironmentVariable(name: string) {
         if (await this.innerSettingsEnvironmentVariableProvider.has(name)) {
             const { value, error, warning } =  await this.innerSettingsEnvironmentVariableProvider.get(name);
