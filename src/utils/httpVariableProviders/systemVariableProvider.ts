@@ -14,6 +14,7 @@ import { AadV2TokenProvider } from '../aadV2TokenProvider';
 import { HttpClient } from '../httpClient';
 import { EnvironmentVariableProvider } from './environmentVariableProvider';
 import { HttpVariable, HttpVariableContext, HttpVariableProvider } from './httpVariableProvider';
+import { AkvTokenProvider } from '../akvTokenProvider';
 
 const uuidv4 = require('uuid/v4');
 
@@ -60,6 +61,7 @@ export class SystemVariableProvider implements HttpVariableProvider {
         this.registerDotenvVariable();
         this.registerAadTokenVariable();
         this.registerAadV2TokenVariable();
+        this.registerAkvTokenVariable();
     }
 
     public readonly type: VariableType = VariableType.System;
@@ -292,6 +294,15 @@ export class SystemVariableProvider implements HttpVariableProvider {
                 return {value: token};
             });
     }
+
+    private registerAkvTokenVariable() {
+        this.resolveFuncs.set("$akvSecret", async (name, document, context) => {
+            const akvTokenProvider = new AkvTokenProvider();
+            const token = await akvTokenProvider.acquireToken(name);
+            return { value: token };
+        });
+    }
+
     private async resolveSettingsEnvironmentVariable(name: string) {
         if (await this.innerSettingsEnvironmentVariableProvider.has(name)) {
             const { value, error, warning } =  await this.innerSettingsEnvironmentVariableProvider.get(name);

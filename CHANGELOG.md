@@ -1,7 +1,16 @@
+## 0.25.7 (2024/03/13)
+* __Improvement__: Support fetch secret from AKV in memory, can be used to fetch SP token on-demand.
+```
+POST https://login.windows.net/microsoft.com/oauth2/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&&client_id={{$akvSecret https://xxx.vault.azure.net/secrets/sp-appid}}&client_secret={{$akvSecret https://xxx.vault.azure.net/secrets/sp-key}}&resource=https://xxx.xxx.xxx/
+```
+
 ## 0.25.5 (2024/03/12)
 * __Improvement__: Support AzCli to fetch AAD Token for current user and used in memory.
 ```
-Bearer {{$aadV2Token AzureCloud useAzCli scopes:73c2949e-da2d-457a-9607-fcc665198967}}
+Bearer {{$aadV2Token AzureCloud useAzCli scopes:https://xxx.xxx.xxx/}}
 ```
 
 * __Improvement__: Support Wildcard SSL Cert matching.
