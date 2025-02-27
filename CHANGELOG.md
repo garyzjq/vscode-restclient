@@ -1,3 +1,25 @@
+
+## 0.25.11 (2025/03/01)
+* __Feature__: Support `$restget` system variable to send REST API GET requests and use the response as the variable value. Includes support for optional headers and a `ttl` (time-to-live) parameter for caching.
+```
+# Example: Send a GET request and use the response
+GET https://api.example.com/data
+Authorization: Bearer {{$restget https://api.example.com/token headers Authorization:Bearer token ttl 60}}
+
+# Explanation:
+# - `https://api.example.com/token`: The URL to send the GET request to.
+# - `headers Authorization:Bearer token`: Optional headers for the request.
+# - `ttl 60`: Cache the response for 60 seconds. If omitted, no caching is applied.
+```
+
+## 0.25.10 (2025/02/26)
+* __Feature__: Support `$localexe` system variable to execute local executables and use their output in requests.
+```
+# Execute a local command and use its output
+GET https://api.example.com/data
+Authorization: Bearer {{$localexe powershell -Command "Get-Secret -Name 'API_TOKEN'"}}
+```
+
 ## 0.25.8 (2024/03/13)
 * __Improvement__: Support fetch SP AAD token by AppId/Key in AKV.
 ```

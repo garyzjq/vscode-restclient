@@ -39,4 +39,5 @@ export const enum ResolveWarningMessage {
     UnsupportedBodyContentType = 'Only JSON and XML response/request body is supported to query the result',
     InvalidJSONPath = 'Invalid JSONPath query',
     InvalidXPath = 'Invalid XPath query',
+    IncorrectRestGetVariableFormat = 'The $restget variable format is incorrect. Use: $restget <url> [headers <key1:value1;key2:value2>] [ttl <seconds>]',
 }

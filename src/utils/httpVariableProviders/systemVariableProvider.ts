@@ -16,6 +16,7 @@ import { EnvironmentVariableProvider } from './environmentVariableProvider';
 import { HttpVariable, HttpVariableContext, HttpVariableProvider } from './httpVariableProvider';
 import { AkvTokenProvider } from '../akvTokenProvider';
 import { AadV2TokenSPProvider } from '../aadV2TokenSPProvider';
+import * as cp from 'child_process';
 
 const uuidv4 = require('uuid/v4');
 
@@ -35,6 +36,7 @@ export class SystemVariableProvider implements HttpVariableProvider {
     private readonly processEnvRegex: RegExp = new RegExp(`\\${Constants.ProcessEnvVariableName}\\s(\\%)?(\\w+)`);
 
     private readonly dotenvRegex: RegExp = new RegExp(`\\${Constants.DotenvVariableName}\\s(\\%)?([\\w-.]+)`);
+    private readonly localExeRegex: RegExp = new RegExp(`\\${Constants.LocalExeVariableName}\\s+(.+)`);
 
     private readonly requestUrlRegex: RegExp = /^(?:[^\s]+\s+)([^:]*:\/\/\/?[^/\s]*\/?)/;
 
@@ -42,6 +44,8 @@ export class SystemVariableProvider implements HttpVariableProvider {
 
     private readonly innerSettingsEnvironmentVariableProvider: EnvironmentVariableProvider =  EnvironmentVariableProvider.Instance;
     private static _instance: SystemVariableProvider;
+    private readonly localExeCache: Map<string, { value: string, timestamp: number }> = new Map();
+    private restGetCache: Map<string, { value: string, expiresAt: number }> = new Map();
 
     public static get Instance(): SystemVariableProvider {
         if (!this._instance) {
@@ -64,6 +68,8 @@ export class SystemVariableProvider implements HttpVariableProvider {
         this.registerAadV2TokenVariable();
         this.registerAadV2TokenSPVariable();
         this.registerAkvTokenVariable();
+        this.registerLocalExeVariable();
+        this.registerRestGetVariable();
     }
 
     public readonly type: VariableType = VariableType.System;
@@ -327,8 +333,137 @@ export class SystemVariableProvider implements HttpVariableProvider {
         }
     }
 
-    // #region AAD
+    private registerLocalExeVariable() {
+        this.resolveFuncs.set(Constants.LocalExeVariableName, async name => {
+            const groups = this.localExeRegex.exec(name);
+            if (groups !== null && groups.length === 2) {
+                const exePath = groups[1];
+                
+                try {
+                    // Check the cache for the command
+                    const cachedResult = this.localExeCache.get(exePath);
+                    const now = Date.now();
+                    const tenMinutesInMs = 10 * 60 * 1000;
 
+                    if (cachedResult && (now - cachedResult.timestamp < tenMinutesInMs)) {
+                        // Return the cached result if it's still valid
+                        return { value: cachedResult.value };
+                    }
+
+                    // Extract the executable path and any arguments
+                    const spaceIndex = exePath.indexOf(' ');
+                    let executablePath: string;
+                    let args: string[] = [];
+                    
+                    if (spaceIndex !== -1) {
+                        executablePath = exePath.substring(0, spaceIndex);
+                        const argsStr = exePath.substring(spaceIndex + 1);
+                        args = argsStr.split(' ').filter(arg => arg.length > 0);
+                    } else {
+                        executablePath = exePath;
+                    }
+
+                    return new Promise<SystemVariableValue>((resolve, reject) => {
+                        cp.execFile(executablePath, args, (error, stdout, stderr) => {
+                            if (error) {
+                                resolve({ 
+                                    value: '',
+                                    error: `Error executing ${executablePath}: ${error.message}`
+                                });
+                                return;
+                            }
+                            
+                            // Trim the output and cache the result
+                            const result = stdout.toString().trim();
+                            this.localExeCache.set(exePath, { value: result, timestamp: now });
+
+                            // Return the result
+                            resolve({ value: result });
+                        });
+                    });
+                } catch (error) {
+                    return { 
+                        value: '',
+                        error: `Failed to execute ${exePath}: ${error.message}`
+                    };
+                }
+            }
+
+            return { warning: ResolveWarningMessage.IncorrectProcessEnvVariableFormat };
+        });
+    }
+
+    private registerRestGetVariable() {
+        this.resolveFuncs.set(Constants.RestGetVariableName, async (name, document) => {
+            const restGetRegex = new RegExp(`\\${Constants.RestGetVariableName}\\s+([^\\s]+)(?:\\s+headers\\s+(.+))?(?:\\s+ttl\\s+(\\d+))?`);
+            const groups = restGetRegex.exec(name);
+    
+            if (groups !== null && groups.length >= 2) {
+                const [, url, headersString, ttlString] = groups;
+    
+                // Parse the ttl parameter (default to 0 if not provided)
+                const ttl = ttlString ? parseInt(ttlString, 10) : 0;
+    
+                // Check the cache
+                const cacheKey = this.getRestGetCacheKey(url, headersString);
+                const now = Date.now();
+                const cachedEntry = this.restGetCache.get(cacheKey);
+    
+                if (cachedEntry && cachedEntry.expiresAt > now) {
+                    // Return the cached value if it's still valid
+                    return { value: cachedEntry.value };
+                }
+    
+                try {
+                    // Parse headers if provided
+                    const headers: Record<string, string> = {};
+                    if (headersString) {
+                        headersString.split(';').forEach(header => {
+                            const [key, value] = header.split(':').map(s => s.trim());
+                            if (key && value) {
+                                headers[key] = value;
+                            }
+                        });
+                    }
+    
+                    // Send the GET request
+                    const response = await this.sendGetRequest(url, headers);
+    
+                    // Cache the response if ttl > 0
+                    if (ttl > 0) {
+                        this.restGetCache.set(cacheKey, {
+                            value: response,
+                            expiresAt: now + ttl * 1000, // ttl is in seconds, convert to milliseconds
+                        });
+                    }
+    
+                    // Return the response body as the variable value
+                    return { value: response };
+                } catch (error) {
+                    return {
+                        value: '',
+                        error: `Failed to execute REST GET request: ${error.message}`
+                    };
+                }
+            }
+    
+            return { warning: ResolveWarningMessage.IncorrectRestGetVariableFormat };
+        });
+    }
+
+    private getRestGetCacheKey(url: string, headersString?: string): string {
+        return `${url}|${headersString || ''}`;
+    }
+
+    private async sendGetRequest(url: string, headers: Record<string, string>): Promise<string> {
+        const httpClient = new HttpClient();
+        const request = new HttpRequest("GET", url, headers);
+    
+        const response = await httpClient.send(request);
+        return response.body;
+    }
+
+    // #region AAD
     private getCloudProvider(endpoint: string): { cloud: string, targetApp: string } {
         for (const c in Constants.AzureClouds) {
             const { aad, arm, armAudience } = Constants.AzureClouds[c];

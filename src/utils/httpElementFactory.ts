@@ -156,7 +156,21 @@ export class HttpElementFactory {
             null,
             Constants.AkvSecretDescription,
             new SnippetString(`{{$\${name:${Constants.AkvSecretVariableName.slice(1)}} \${1:Azure Key Vault Secret URL}}}`)));
-            
+        originalElements.push(new HttpElement(
+            Constants.LocalExeVariableName,
+            ElementType.SystemVariable,
+            null,
+            Constants.LocalExeDescription,
+            new SnippetString(`{{$\${name:${Constants.LocalExeVariableName.slice(1)}} \${1:executable path and arguments}}}`)
+        ));
+        originalElements.push(new HttpElement(
+            Constants.RestGetVariableName,
+            ElementType.SystemVariable,
+            null,
+            Constants.RestGetDescription,
+            new SnippetString(`{{$\${name:${Constants.RestGetVariableName.slice(1)}} \${1:url} headers \${2:key1:value1;key2:value2} ttl \${3:seconds}}}`)
+        ));
+        
         // add environment custom variables
         const environmentVariables = await EnvironmentVariableProvider.Instance.getAll();
         for (const { name, value } of environmentVariables) {

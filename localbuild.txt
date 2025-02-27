@@ -1,5 +1,6 @@
 vsce package
-vsce publish
+# vsce publish
+# open https://marketplace.visualstudio.com/manage/publishers/restclientpro?noPrompt=true to upload
 -------------
 
 npm ERR! code CERT_HAS_EXPIRED

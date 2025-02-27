@@ -1,4 +1,3 @@
-
 export const ExtensionId: string = 'humao.rest-client';
 export const AiKey: string = 'ad746e27-4a36-441c-8b94-5db178f81ae3';
 
@@ -27,6 +26,10 @@ export const AkvSecretVariableName = "$akvSecret";
 export const AkvSecretDescription = "Fetches a secret from Azure Key Vault and adds it to the request";
 export const AzureActiveDirectoryV2TokenSPVariableName = "$addV2TokenSP";
 export const AzureActiveDirectoryV2TokenSPDescription = "Prompts to sign in to Azure AD V2 with Service Principal and adds the token to the request";
+export const LocalExeVariableName = "$localExe";
+export const LocalExeDescription = "Executes a local executable file and returns the result";
+export const RestGetVariableName = "$restGet";
+export const RestGetDescription = "Sends a REST API GET request to the specified URL and optionally includes headers. Returns the response as the variable value.";
 
 /**
  * NOTE: The client id represents an AAD app people sign in to. The client id is sent to AAD to indicate what app
